@@ -22,8 +22,12 @@ This repo contains a single primary document: `README.md` — a technical refere
 - J1-7 = `/PROG_ENA` (active-low boot mode enable — ground only when flashing)
 - J1-12 = `TXD`, J1-35 = `RXD`, J1-22 = `GND` (RS-232)
 - J1-11 = `CANA_L`, J1-33 = `CANA_H`
+- J1-23 = `CANB_H`, J1-34 = `CANB_L`
+- Pins 10, 18, 29, 32 = Reserved — do not connect
 
 **J1 to DB9 RS-232 mapping:** J1-12→DB9 pin 2, J1-35→DB9 pin 3, J1-22→DB9 pin 5
+
+**Termination:** 120 Ω termination is for CAN bus only — RS-232 uses no termination resistors.
 
 **Tool roles:**
 - `C2Prog` / `c2p-cli` = firmware flashing only (boot mode required)
@@ -41,3 +45,5 @@ screen /dev/cu.usbserial-FTES73H7 115200
 ## Documentation Updates
 
 When adding to this research, update `README.md` directly. Prefer verified hardware documentation over inferred information; note the distinction where diagrams are conceptual vs. factory-verified schematics.
+
+Official Cascadia Motion documentation (firmware, RMS GUI downloads): `https://www.cascadiamotion.com/documentation`
