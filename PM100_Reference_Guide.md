@@ -656,7 +656,7 @@ a network — only one device can be connected to the PM100 at a time.
 │   PM100 J1                 Cable (3 wires)             PC / USB Adapter      │
 │                                                                              │
 │   J1-12  TXD  ──────────────────────────────────────  DB9 Pin 2  RXD         │
-│               ← signal flows FROM the PM100 TO the PC                        │
+│               → signal flows FROM the PM100 TO the PC                        │
 │                                                                              │
 │   J1-35  RXD  ──────────────────────────────────────  DB9 Pin 3  TXD         │
 │               ← signal flows FROM the PC TO the PM100                        │
