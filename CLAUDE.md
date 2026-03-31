@@ -8,13 +8,8 @@ This is a research documentation repository for **Cascadia Motion Motor Control 
 
 ## Structure
 
-This repo contains a single primary document: `README.md` — a technical reference covering:
-
-- **C2Prog** firmware flashing workflow (boot mode via `/PROG_ENA`)
-- **RS-232 communication** with the Cascadia Motion inverter/MCU
-- **35-way AMPSEAL J1 connector** full pinout table
-- **RMS GUI** — the Windows service/diagnostics application
-- **Regenerative braking** energy flow through the inverter DC bus
+- `README.md` — project intro and index linking into the reference guide
+- `PM100_Reference_Guide.md` — primary technical reference (connectors, communication, software, system architecture)
 
 ## Key Technical Facts
 
@@ -44,6 +39,6 @@ screen /dev/cu.usbserial-FTES73H7 115200
 
 ## Documentation Updates
 
-When adding to this research, update `README.md` directly. Prefer verified hardware documentation over inferred information; note the distinction where diagrams are conceptual vs. factory-verified schematics.
+Add new technical content to `PM100_Reference_Guide.md`. Update `README.md` only if new top-level sections are added. Prefer verified hardware documentation over inferred information; note the distinction where diagrams are conceptual vs. factory-verified schematics.
 
 Official Cascadia Motion documentation (firmware, RMS GUI downloads): `https://www.cascadiamotion.com/documentation`
