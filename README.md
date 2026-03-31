@@ -1,5 +1,7 @@
 # BlueBoy EV — Cascadia Motion PM100 Integration
 
+<img src="https://raw.githubusercontent.com/deepgrant/ProjectBlueBoy/main/Blue%20Boy.png" width="600" align="center" alt="Blue Boy">
+
 This repository documents the integration of the **Cascadia Motion / Rinehart Motion Systems PM100** AC motor inverter into the BlueBoy EV powertrain project.
 
 The primary reference is **[PM100_Reference_Guide.md](PM100_Reference_Guide.md)**, covering:
