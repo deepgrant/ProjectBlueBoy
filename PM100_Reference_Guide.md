@@ -674,6 +674,34 @@ a network — only one device can be connected to the PM100 at a time.
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│              DB9 FEMALE SOCKET — PIN LAYOUT                                  │
+│              (looking at the face of the socket)                             │
+│                                                                              │
+│         ┌──────────────────────────────────────────────┐                     │
+│        /                                                 \                   │
+│       │    (1)     (2)     (3)     (4)     (5)            │                  │
+│       │         (6)     (7)     (8)     (9)               │                  │
+│        \                                                 /                   │
+│         └──────────────────────────────────────────────┘                     │
+│                                                                              │
+│  Pin  Signal  Function               PM100 Connection                        │
+│  ───  ──────  ─────────────────────  ──────────────────────────────────────  │
+│   1   DCD     Data Carrier Detect    not connected                           │
+│   2   RXD     Receive Data           ← J1-12 TXD  (data from PM100)          │
+│   3   TXD     Transmit Data          → J1-35 RXD  (data to PM100)            │
+│   4   DTR     Data Terminal Ready    not connected                           │
+│   5   GND     Signal Ground          ── J1-22 GND  (common reference)        │
+│   6   DSR     Data Set Ready         not connected                           │
+│   7   RTS     Request To Send        not connected                           │
+│   8   CTS     Clear To Send          not connected                           │
+│   9   RI      Ring Indicator         not connected                           │
+│                                                                              │
+│  Only pins 2, 3, and 5 are wired for PM100 communication.                    │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
 ### 6.3 Testing the Serial Connection
 
 **On macOS:**
@@ -696,9 +724,11 @@ screen /dev/cu.usbserial-FTES73H7 57600
 
 **On Windows 10:**
 
-1. Open Device Manager → Ports (COM & LPT) — note the COM port number
-2. Open RMS GUI and select the COM port → verifies real communication
-3. For adapter testing, short DB9 pins 2–3 and use a terminal (e.g., PuTTY at 57600 8N1)
+> For identifying the COM port and configuring the baud rate, see [§8.1 Connecting on Windows](#81-connecting-on-windows).
+
+1. Identify the COM port and set baud rate to 57600 as described in §8.1.
+2. Open RMS GUI and select the COM port → verifies real communication.
+3. For adapter testing, short DB9 pins 2–3 and use a terminal (e.g., PuTTY at 57600 8N1).
 
 ⚠ **Seeing no text in a plain terminal does NOT mean failure.** The PM100 uses a proprietary protocol
 — raw serial output is not plain ASCII. Use RMS GUI for real functional testing.
@@ -842,6 +872,33 @@ It is the primary service tool for bench testing, configuration, and diagnostics
 │  DOWNLOAD: https://www.cascadiamotion.com/documentation                      │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
+
+### 8.1 Connecting on Windows
+
+**Step 1 — Identify the COM port**
+
+1. Plug in the USB-to-serial adapter.
+2. Open **Device Manager** (Win + X → Device Manager).
+3. Expand **Ports (COM & LPT)**.
+4. Note the COM port assigned to your adapter (e.g. `COM3`).
+
+> If the adapter does not appear under Ports, the driver is not installed. Check the adapter manufacturer's website for a Windows driver.
+
+**Step 2 — Set the baud rate in the port settings**
+
+Windows USB-serial adapters default to **9600 baud**. Change this to match the PM100:
+
+1. In Device Manager, right-click the COM port → **Properties**.
+2. Select the **Port Settings** tab.
+3. Set **Bits per second** to **57600**.
+4. Confirm Data bits = 8, Parity = None, Stop bits = 1, Flow control = None.
+5. Click **OK**.
+
+**Step 3 — Configure RMS GUI**
+
+1. Open the `comport.ini` file in the RMS GUI folder.
+2. Enter the COM port identifier (e.g. `COM3`) and save.
+3. Launch RMS GUI — it should connect and begin displaying live parameters.
 
 ---
 
