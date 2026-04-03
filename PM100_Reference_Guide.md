@@ -1838,13 +1838,13 @@ through power cycles.
 
 The table below lists the source documents used to compile this reference guide. Where content is derived from a specific source, the section notes it. If the BlueBoy firmware version differs from the document versions listed here, cross-check the relevant source before relying on specific byte offsets, parameter addresses, or scaling factors.
 
-| Ref | Document | Version / Date | Publisher | Notes |
-|-----|----------|---------------|-----------|-------|
-| [1] | CAN Protocol | Rev 5.9, 25 Feb 2022 | Cascadia Motion | Primary source for all of §7 (CAN messages, byte definitions, EEPROM parameter addresses). Covers PM, RM, PM Gen 5, and CM families. Firmware-specific differences noted within §7. |
-| [2] | PM100 User Manual | 3/8/2011 | Rinehart Motion Systems LLC | Primary source for connector pinouts (§3, §4), power connections (§2), VSM (§10), pre-charge (§3.3.2), RS-232 (§6), and I/O electrical details (§5). |
-| [3] | PM100DX Inverter Drawing | 180-100-002.00, Rev 2.3 | Swindon Silicon Systems / SWIND EV | Factory low-voltage wiring schematic (3 sheets). Sheet 1 (general arrangement) publicly available as rev .01 from Swindon Powertrain webshop. Sheets 2–3 not publicly hosted. |
-| [4] | PM100 MotoHawk CAN Library | — | New Eagle / Rinehart | Supplementary CAN signal definitions. Available via New Eagle wiki. |
-| [5] | AMPSEAL Connector Datasheet | — | TE Connectivity | J1 connector PN 776164-1, J2 connector PN 770680-1, crimp contact PN 770854-1. |
+| Ref | Document | Version / Date | Publisher | Local Copy | Notes |
+|-----|----------|---------------|-----------|------------|-------|
+| [1] | CAN Protocol | Rev 5.9, 25 Feb 2022 | Cascadia Motion | [references/Ref1_Cascadia_Motion_CAN_Protocol_Rev5.9.pdf](references/Ref1_Cascadia_Motion_CAN_Protocol_Rev5.9.pdf) | Primary source for all of §7 (CAN messages, byte definitions, EEPROM parameter addresses). Covers PM, RM, PM Gen 5, and CM families. Firmware-specific differences noted within §7. |
+| [2] | PM100 User Manual | 3/8/2011 | Rinehart Motion Systems LLC | [references/Ref2_PM100_User_Manual_2011.pdf](references/Ref2_PM100_User_Manual_2011.pdf) | Primary source for connector pinouts (§3, §4), power connections (§2), VSM (§10), pre-charge (§3.3.2), RS-232 (§6), and I/O electrical details (§5). |
+| [3] | PM100DX Inverter Drawing | 180-100-002.00 Rev 2.3 / .01 | Swindon Silicon Systems / SWIND EV | [.00 (3-sheet)](references/Ref3_PM100DX_Inverter_Drawing_180-100-002.00.pdf) · [.01 (sheet 1)](references/Ref3_PM100DX_Inverter_Drawing_180-100-002.01.pdf) | Factory low-voltage wiring schematic. .00 is the 3-sheet set held by BlueBoy; .01 is the publicly available single-sheet revision from Swindon Powertrain. |
+| [4] | PM100 MotoHawk CAN Library | — | New Eagle / Rinehart | [references/Ref4_Rinehart_PM100_CAN_Library.pdf](references/Ref4_Rinehart_PM100_CAN_Library.pdf) | Supplementary CAN signal definitions. |
+| [5] | AMPSEAL Connector Catalog | 54285-2, Aug 2015 | TE Connectivity | [references/Ref5_TE_AMPSEAL_Datasheet.pdf](references/Ref5_TE_AMPSEAL_Datasheet.pdf) | J1 connector PN 776164-1, J2 connector PN 770680-1, crimp contact PN 770854-1. Full AMPSEAL series catalog covering dimensions, ordering info, and tooling. |
 
 ### Firmware version notes for §7 (CAN)
 
