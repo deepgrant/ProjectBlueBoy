@@ -37,6 +37,12 @@ screen /dev/cu.usbserial-FTES73H7 115200
 
 **Regen path:** Motor U/V/W → Inverter power stage → Inverter DC bus → HV battery (motor does NOT feed battery directly on separate wires)
 
+**CAN message IDs (default base 0x0A0):**
+- Broadcast (PM100 → VCU): 0x0A0–0x0AE (slow 10 Hz), 0x0A3–0x0AC (fast 100 Hz), 0x0B0 (333 Hz, fw 2042+)
+- Command (VCU → PM100): 0x0C0 (torque/speed/enable/direction)
+- Parameter read/write (VCU → PM100): 0x0C1; Response (PM100 → VCU): 0x0C2
+- NOTE: 0x0C8/0x0C9 do NOT exist in this protocol — the correct parameter message IDs are 0x0C1/0x0C2
+
 ## Documentation Updates
 
 Add new technical content to `PM100_Reference_Guide.md`. Update `README.md` only if new top-level sections are added. Prefer verified hardware documentation over inferred information; note the distinction where diagrams are conceptual vs. factory-verified schematics.

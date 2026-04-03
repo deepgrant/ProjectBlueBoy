@@ -740,6 +740,12 @@ screen /dev/cu.usbserial-FTES73H7 57600
 CAN (Controller Area Network) is a differential serial bus that supports multiple devices on a single
 twisted pair. In an EV, CAN is typically how the vehicle controller commands the inverter.
 
+> **Source \[Ref 1\]:** All byte-level specifications in §7.2–§7.11 are derived from the official
+> Cascadia Motion **CAN Protocol, Revision 5.9** (25 Feb 2022) \[Ref 1\], covering PM, RM, PM Gen 5,
+> and CM controller families. Some message formats are firmware-version-dependent — see
+> [§14 References](#14-references) for a version compatibility table before relying on specific
+> byte offsets or parameter addresses.
+
 ### 7.1 Physical Layer
 
 ```
@@ -762,77 +768,692 @@ twisted pair. In an EV, CAN is typically how the vehicle controller commands the
 │                                                                              │
 │  KEY RULES:                                                                  │
 │  • Termination: exactly TWO 120 Ω resistors, one at each physical end        │
-│  • Do NOT add 120 Ω if PM100 software termination is enabled                 │
+│  • PM100 has a software-configurable internal 120 Ω terminator (CAN A only)  │
+│    — enable it if PM100 is at one end of the bus run                         │
+│  • RM and CM controllers do NOT have a built-in terminator                   │
 │  • No star wiring — short stub connections only                              │
 │  • Twisted pair required — do not use untwisted wire                         │
 │  • Default bus speed: 250 kbps (software selectable: 125/250/500/1000 kbps)  │
+│  • CAN A (J1-11, J1-33) is the active interface; CAN B is reserved           │
+│  • All messages: DLC = 8 bytes, little-endian (least significant byte first) │
+│  • Standard 11-bit IDs (CAN 2.0A); extended 29-bit and J1939 also supported  │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 7.2 Message Overview
+### 7.2 Data Format Conventions
 
-The PM100 uses CAN 2.0A (standard 11-bit IDs). The **base address** is 0x0A0 by default (adjustable
-via EEPROM). All messages are 8 bytes.
+All multi-byte values in CAN messages are **little-endian**: byte 0 is the least significant byte
+(LSB) and byte 1 is the most significant byte (MSB). The format types used across all messages:
+
+| Format Name      | Encoding                              | Scale / Units                     | Range                     |
+|------------------|---------------------------------------|-----------------------------------|---------------------------|
+| Temperature      | Signed 16-bit int (little-endian)     | Actual °C × 10                    | −3276.8 to +3276.7 °C     |
+| Low Voltage      | Signed 16-bit int                     | Actual volts × 100                | −327.68 to +327.67 V      |
+| High Voltage     | Signed 16-bit int                     | Actual volts × 10                 | −3276.8 to +3276.7 V      |
+| Current          | Signed 16-bit int                     | Actual amps × 10                  | −3276.8 to +3276.7 A      |
+| Torque           | Signed 16-bit int                     | Actual N·m × 10                   | −3276.8 to +3276.7 N·m    |
+| Angle            | Signed 16-bit int                     | Actual degrees × 10               | 0.0 to ±359.9°            |
+| Angular Velocity | Signed 16-bit int                     | Actual RPM (1:1)                  | −32768 to +32767 RPM      |
+| Frequency        | Signed 16-bit int                     | Actual Hz × 10                    | −3276.8 to +3276.7 Hz     |
+| Flux             | Signed 16-bit int                     | Actual Webers × 1000              | −32.768 to +32.767 Wb     |
+| Power            | Signed 16-bit int                     | Actual kW × 10                    | −3276.8 to +3276.7 kW     |
+| Boolean          | Unsigned 8-bit                        | 0 = false/off, 1 = true/on        | 0 or 1                    |
+
+**Example — decoding a 16-bit little-endian value:**
+If bytes 0,1 of a temperature message read `0x0E 0xEE`, the raw value is `0xEE0E = 60942`.
+As a signed 16-bit number this is 60942 → but since temperature range is −3276.8 to +3276.7,
+treat as unsigned or check sign bit. For a typical positive temperature: raw = `0x01F4 = 500` →
+500 ÷ 10 = **50.0 °C**.
+
+### 7.3 Broadcast Message Map
+
+The PM100 broadcasts all messages continuously regardless of VSM or CAN mode.
+The base address 0x0A0 is the default (adjustable via EEPROM parameter CAN ID Offset).
+Individual messages can be enabled/disabled using EEPROM parameter address 148
+(CAN Active Messages Lo Word).
+
+```
+┌───────────────────────────────────────────────────────────────────────────────┐
+│              CAN BROADCAST MESSAGES (PM100 → Vehicle Controller)              │
+│  Direction: PM100 transmits; vehicle controller reads (receive only)          │
+│                                                                               │
+│  ID      │ Rate      │ Content                          │ Enable bit (Addr 148)│
+│──────────┼───────────┼──────────────────────────────────┼──────────────────── │
+│  0x0A0   │ 10 Hz     │ Temperatures #1 (IGBT modules)   │ bit 0  (0x0001)     │
+│  0x0A1   │ 10 Hz     │ Temperatures #2 (board + RTDs)   │ bit 1  (0x0002)     │
+│  0x0A2   │ 10 Hz     │ Temperatures #3 (motor + shudder)│ bit 2  (0x0004)     │
+│  0x0A3   │ 100 Hz    │ Analog Input Voltages            │ bit 3  (0x0008)     │
+│  0x0A4   │ 100 Hz    │ Digital Input Status             │ bit 4  (0x0010)     │
+│  0x0A5   │ 100 Hz    │ Motor Position Information       │ bit 5  (0x0020)     │
+│  0x0A6   │ 100 Hz    │ Current Information              │ bit 6  (0x0040)     │
+│  0x0A7   │ 100 Hz    │ Voltage Information              │ bit 7  (0x0080)     │
+│  0x0A8   │ 100 Hz    │ Flux Information                 │ bit 8  (0x0100)     │
+│  0x0A9   │ 10 Hz     │ Internal Voltages (power rails)  │ bit 9  (0x0200)     │
+│  0x0AA   │ 100 Hz    │ Internal States (VSM, faults)    │ bit 10 (0x0400)     │
+│  0x0AB   │ 100 Hz    │ Fault Codes (POST + Run faults)  │ bit 11 (0x0800)     │
+│  0x0AC   │ 100 Hz    │ Torque & Timer Information       │ bit 12 (0x1000)     │
+│  0x0AD   │ 100 Hz    │ Modulation Index & Flux Weak.    │ bit 13 (0x2000)     │
+│  0x0AE   │ 10 Hz     │ Firmware Information             │ bit 14 (0x4000)     │
+│  0x0AF   │ 100 Hz    │ Diagnostic Data (see diag manual)│ bit 15 (0x8000)     │
+│  0x0B0   │ 333 Hz    │ High Speed Message (fw 2042+)    │ Hi Word bit 0=0     │
+│           │ (3 ms)   │ Torque cmd/fdbk, speed, DC bus   │ (set Hi Word 0xFFFE)│
+└───────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Broadcast rate notes:** "Slow" group (10 Hz) = 0x0A0, 0x0A1, 0x0A2, 0x0A9, 0x0AE.
+"Fast" group (100 Hz) = all others. Starting firmware version 2025, rates are configurable
+via EEPROM parameters CAN Fast Msg Rate (addr 235) and CAN Slow Msg Rate (addr 236).
+Setting either rate to 0 disables the entire group.
+
+### 7.4 Broadcast Message Byte Definitions
+
+All messages are 8 bytes, little-endian. Byte pairs are listed as [Lo byte, Hi byte].
+
+---
+
+#### 0x0A0 — Temperatures #1 (IGBT Module Temperatures) — 10 Hz
+
+| Bytes | Signal               | Format      | Scale    | Description                        |
+|-------|----------------------|-------------|----------|------------------------------------|
+| 0, 1  | Module A Temperature | Temperature | °C × 10  | IGBT module Phase A temperature    |
+| 2, 3  | Module B Temperature | Temperature | °C × 10  | IGBT module Phase B temperature    |
+| 4, 5  | Module C Temperature | Temperature | °C × 10  | IGBT module Phase C temperature    |
+| 6, 7  | Gate Driver Board Temp | Temperature | °C × 10 | Gate driver board temperature     |
+
+Example: bytes `[0xD0, 0x07, 0xD0, 0x07, 0xD0, 0x07, 0xD0, 0x07]` →
+all four temperatures = 0x07D0 = 2000 → 200.0 °C.
+
+---
+
+#### 0x0A1 — Temperatures #2 (Control Board + RTD Inputs) — 10 Hz
+
+| Bytes | Signal                | Format      | Scale   | Description                        |
+|-------|-----------------------|-------------|---------|-------------------------------------|
+| 0, 1  | Control Board Temp    | Temperature | °C × 10 | Control PCB temperature             |
+| 2, 3  | RTD #1 Temperature    | Temperature | °C × 10 | Temperature from RTD input #1       |
+| 4, 5  | RTD #2 Temperature    | Temperature | °C × 10 | Temperature from RTD input #2       |
+| 6, 7  | RTD #3 Temperature    | Temperature | °C × 10 | Temperature from RTD input #3 (Gen 2 only) |
+
+---
+
+#### 0x0A2 — Temperatures #3 (Motor + Shudder) — 10 Hz
+
+| Bytes | Signal                       | Format      | Scale    | Description                                     |
+|-------|------------------------------|-------------|----------|-------------------------------------------------|
+| 0, 1  | Coolant Temp / RTD #4 Temp   | Temperature | °C × 10  | Gen 2: RTD #4; Gen 5/CM: estimated coolant temp |
+| 2, 3  | Hot Spot Temp / RTD #5 Temp  | Temperature | °C × 10  | Gen 2: RTD #5; Gen 5/CM: estimated internal hot spot |
+| 4, 5  | Motor Temperature            | Temperature | °C × 10  | Filtered motor temp sensor value                |
+| 6, 7  | Torque Shudder               | Torque      | N·m × 10 | Torque value used in shudder compensation       |
+
+---
+
+#### 0x0A3 — Analog Input Voltages — 100 Hz
+
+**For firmware before version 1995 (4 analog inputs, 16-bit each):**
+
+| Bytes | Signal          | Format      | Scale     | Description               |
+|-------|-----------------|-------------|-----------|---------------------------|
+| 0, 1  | Analog Input #1 | Low Voltage | volts × 100 | Voltage on AIN1 (0–5 V) |
+| 2, 3  | Analog Input #2 | Low Voltage | volts × 100 | Voltage on AIN2           |
+| 4, 5  | Analog Input #3 | Low Voltage | volts × 100 | Voltage on AIN3           |
+| 6, 7  | Analog Input #4 | Low Voltage | volts × 100 | Voltage on AIN4           |
+
+**For firmware version 1995 and later (6 analog inputs, 10-bit each packed into bits):**
+
+| Bits    | Signal          | Format      | Scale     | Description               |
+|---------|-----------------|-------------|-----------|---------------------------|
+| 0–9     | Analog Input #1 | Low Voltage | volts × 100 | Voltage on AIN1         |
+| 10–19   | Analog Input #2 | Low Voltage | volts × 100 | Voltage on AIN2         |
+| 20–29   | Analog Input #3 | Low Voltage | volts × 100 | Voltage on AIN3         |
+| 32–41   | Analog Input #4 | Low Voltage | volts × 100 | Voltage on AIN4         |
+| 42–51   | Analog Input #5 | Low Voltage | volts × 100 | Voltage on AIN5         |
+| 52–61   | Analog Input #6 | Low Voltage | volts × 100 | Voltage on AIN6         |
+
+---
+
+#### 0x0A4 — Digital Input Status — 100 Hz
+
+| Byte | Signal          | Format  | Description                                 |
+|------|-----------------|---------|---------------------------------------------|
+| 0    | Digital Input #1 | Boolean | Forward switch status                       |
+| 1    | Digital Input #2 | Boolean | Reverse switch status                       |
+| 2    | Digital Input #3 | Boolean | Brake switch status                         |
+| 3    | Digital Input #4 | Boolean | REGEN disable switch status                 |
+| 4    | Digital Input #5 | Boolean | Ignition switch status                      |
+| 5    | Digital Input #6 | Boolean | Start switch status                         |
+| 6    | Digital Input #7 | Boolean | Valet mode status                           |
+| 7    | Digital Input #8 | Boolean | Digital Input #8 status                    |
+
+---
+
+#### 0x0A5 — Motor Position Information — 100 Hz
+
+| Bytes | Signal                   | Format           | Scale        | Description                                  |
+|-------|--------------------------|------------------|--------------|----------------------------------------------|
+| 0, 1  | Motor Angle (Electrical) | Angle            | degrees × 10 | Electrical angle from encoder/resolver       |
+| 2, 3  | Motor Speed              | Angular Velocity | RPM (1:1)    | Measured motor speed                         |
+| 4, 5  | Electrical Output Freq   | Frequency        | Hz × 10      | Actual electrical output frequency           |
+| 6, 7  | Delta Resolver Filtered  | Angle            | degrees × 10 | Calibration value; range ±180°; 270° = −90°  |
+
+---
+
+#### 0x0A6 — Current Information — 100 Hz
+
+| Bytes | Signal          | Format  | Scale    | Description                              |
+|-------|-----------------|---------|----------|------------------------------------------|
+| 0, 1  | Phase A Current | Current | amps × 10 | Measured phase A current                |
+| 2, 3  | Phase B Current | Current | amps × 10 | Measured phase B current                |
+| 4, 5  | Phase C Current | Current | amps × 10 | Measured phase C current                |
+| 6, 7  | DC Bus Current  | Current | amps × 10 | Calculated DC bus current               |
+
+Example: DC bus current bytes `[0x64, 0x00]` → 0x0064 = 100 → 10.0 A.
+
+---
+
+#### 0x0A7 — Voltage Information — 100 Hz
+
+| Bytes | Signal           | Format       | Scale      | Description                                                       |
+|-------|------------------|--------------|------------|-------------------------------------------------------------------|
+| 0, 1  | DC Bus Voltage   | High Voltage | volts × 10 | Measured DC bus voltage                                           |
+| 2, 3  | Output Voltage   | High Voltage | volts × 10 | Calculated output (peak line-neutral)                             |
+| 4, 5  | VAB / Vd Voltage | High Voltage | volts × 10 | Phase A–B voltage when disabled; Vd voltage when enabled          |
+| 6, 7  | VBC / Vq Voltage | High Voltage | volts × 10 | Phase B–C voltage when disabled; Vq voltage when enabled          |
+
+Example: DC bus voltage bytes `[0xC4, 0x09]` → 0x09C4 = 2500 → 250.0 V.
+
+---
+
+#### 0x0A8 — Flux Information — 100 Hz
+
+| Bytes | Signal        | Format  | Scale          | Description              |
+|-------|---------------|---------|----------------|--------------------------|
+| 0, 1  | Flux Command  | Flux    | Webers × 1000  | Commanded flux           |
+| 2, 3  | Flux Feedback | Flux    | Webers × 1000  | Estimated flux           |
+| 4, 5  | Id Feedback   | Current | amps × 10      | D-axis current feedback  |
+| 6, 7  | Iq Feedback   | Current | amps × 10      | Q-axis current feedback  |
+
+---
+
+#### 0x0A9 — Internal Voltages (Power Rail Monitor) — 10 Hz
+
+| Bytes | Signal              | Format      | Scale       | Description                  |
+|-------|---------------------|-------------|-------------|------------------------------|
+| 0, 1  | 1.5 V Reference     | Low Voltage | volts × 100 | Internal 1.5 V rail          |
+| 2, 3  | 2.5 V Reference     | Low Voltage | volts × 100 | Internal 2.5 V rail          |
+| 4, 5  | 5.0 V Reference     | Low Voltage | volts × 100 | Internal 5.0 V rail          |
+| 6, 7  | 12 V System Voltage | Low Voltage | volts × 100 | 12 V system supply           |
+
+---
+
+#### 0x0AA — Internal States — 100 Hz
+
+This message carries packed status information across all 8 bytes. Several fields are bit-level.
+
+| Byte | Bit(s) | Signal                   | Values / Meaning                                                              |
+|------|--------|--------------------------|-------------------------------------------------------------------------------|
+| 0    | all    | VSM State                | 0=Start, 1=Pre-charge Init, 2=Pre-charge Active, 3=Pre-charge Complete,       |
+|      |        |                          | 4=Wait, 5=Ready, 6=Motor Running, 7=Blink Fault Code,                        |
+|      |        |                          | 14=Shutdown in Process, 15=Recycle Power                                      |
+| 1    | all    | PWM Frequency            | kHz (Gen 5/CM: currently active PWM frequency)                                |
+| 2    | all    | Inverter State           | 0=Power On, 1=Stop, 2=Open Loop, 3=Closed Loop, 4=Wait,                      |
+|      |        |                          | 8=Idle Run, 9=Idle Stop (5–7, 10–12 = internal states)                       |
+| 3    | 0      | Relay 1 Status           | 1 = Relay 1 active                                                            |
+|      | 1      | Relay 2 Status           | 1 = Relay 2 active                                                            |
+|      | 2      | Relay 3 Status           | 1 = Relay 3 active                                                            |
+|      | 3      | Relay 4 Status           | 1 = Relay 4 active                                                            |
+|      | 4      | Relay 5 Status           | 1 = Relay 5 active                                                            |
+|      | 5      | Relay 6 Status           | 1 = Relay 6 active                                                            |
+| 4    | 0      | Inverter Run Mode        | 0 = Torque Mode, 1 = Speed Mode                                               |
+|      | 5–7    | Active Discharge State   | 0=Disabled, 1=Enabled/waiting, 2=Speed Check, 3=Active, 4=Complete           |
+| 5    | 0      | Inverter Command Mode    | 0 = CAN Mode, 1 = VSM Mode                                                    |
+|      | 4–7    | Rolling Counter Value    | Gen 5/CM only: expected rolling counter value (0–15)                          |
+| 6    | 0      | Inverter Enable State    | 0 = Inverter disabled, 1 = Inverter enabled                                   |
+|      | 6      | Start Mode Active        | 1 = start signal has been activated                                           |
+|      | 7      | Inverter Enable Lockout  | 0 = can enable; 1 = cannot enable (must send disable first)                   |
+| 7    | 0      | Direction Command        | 1 = Forward, 0 = Reverse (if enabled) or Stopped (if disabled)               |
+|      | 1      | BMS Active               | 0 = BMS message not received, 1 = BMS message active                         |
+|      | 2      | BMS Limiting Torque      | 1 = torque is being limited by BMS                                            |
+|      | 3      | Limit Max Speed          | 1 = torque limiting due to over-speed (Gen 5/CM + Gen 3 v2042+)              |
+|      | 4      | Limit Hot Spot           | 1 = current limited to regulate hot spot temperature (Gen 5/CM only)         |
+|      | 5      | Low Speed Limiting       | 1 = low-speed current limiting applied (Gen 5/CM + Gen 3 v2042+)             |
+|      | 6      | Coolant Temp Limiting    | 1 = current limited due to coolant temperature (Gen 5/CM only)               |
+
+---
+
+#### 0x0AB — Fault Codes — 100 Hz
+
+| Bytes | Signal         | Format   | Description                             |
+|-------|----------------|----------|-----------------------------------------|
+| 0, 1  | POST Fault Lo  | 32-bit bitmask (lo word) | Power-On Self Test fault bits 0–15 |
+| 2, 3  | POST Fault Hi  | 32-bit bitmask (hi word) | Power-On Self Test fault bits 16–31 |
+| 4, 5  | Run Fault Lo   | 32-bit bitmask (lo word) | Run-time fault bits 0–15            |
+| 6, 7  | Run Fault Hi   | 32-bit bitmask (hi word) | Run-time fault bits 16–31           |
+
+**POST Fault Bits (bits 0–31, bytes 0–3):**
+
+| Bit | Byte | Byte Value | POST Fault Description                           |
+|-----|------|------------|--------------------------------------------------|
+| 0   | 0    | 0x01       | Hardware Gate / Desaturation Fault               |
+| 1   | 0    | 0x02       | HW Over-current Fault                            |
+| 2   | 0    | 0x04       | Accelerator Shorted                              |
+| 3   | 0    | 0x08       | Accelerator Open                                 |
+| 4   | 0    | 0x10       | Current Sensor Low                               |
+| 5   | 0    | 0x20       | Current Sensor High                              |
+| 6   | 0    | 0x40       | Module Temperature Low                           |
+| 7   | 0    | 0x80       | Module Temperature High                          |
+| 8   | 1    | 0x01       | Control PCB Temperature Low                      |
+| 9   | 1    | 0x02       | Control PCB Temperature High                     |
+| 10  | 1    | 0x04       | Gate Drive PCB Temperature Low                   |
+| 11  | 1    | 0x08       | Gate Drive PCB Temperature High                  |
+| 12  | 1    | 0x10       | 5 V Sense Voltage Low                            |
+| 13  | 1    | 0x20       | 5 V Sense Voltage High                           |
+| 14  | 1    | 0x40       | 12 V Sense Voltage Low                           |
+| 15  | 1    | 0x80       | 12 V Sense Voltage High                          |
+| 16  | 2    | 0x01       | 2.5 V Sense Voltage Low                          |
+| 17  | 2    | 0x02       | 2.5 V Sense Voltage High                         |
+| 18  | 2    | 0x04       | 1.5 V Sense Voltage Low                          |
+| 19  | 2    | 0x08       | 1.5 V Sense Voltage High                         |
+| 20  | 2    | 0x10       | DC Bus Voltage High                              |
+| 21  | 2    | 0x20       | DC Bus Voltage Low                               |
+| 22  | 2    | 0x40       | Pre-charge Timeout                               |
+| 23  | 2    | 0x80       | Pre-charge Voltage Failure                       |
+| 24  | 3    | 0x01       | EEPROM Checksum Invalid                          |
+| 25  | 3    | 0x02       | EEPROM Data Out of Range                         |
+| 26  | 3    | 0x04       | EEPROM Update Required                           |
+| 27  | 3    | 0x08       | Hardware DC Bus Over-Voltage (init) / Gen 5: Gate Driver Init |
+| 28  | 3    | 0x10       | Gen 3: Reserved; Gen 5: Gate Driver Initialization |
+| 29  | 3    | 0x20       | Reserved                                         |
+| 30  | 3    | 0x40       | Brake Shorted                                    |
+| 31  | 3    | 0x80       | Brake Open                                       |
+
+**Run Fault Bits (bits 0–31, bytes 4–7):**
+
+| Bit | Byte | Byte Value | Run Fault Description                                         |
+|-----|------|------------|---------------------------------------------------------------|
+| 0   | 4    | 0x01       | Motor Over-speed Fault                                        |
+| 1   | 4    | 0x02       | Over-current Fault                                            |
+| 2   | 4    | 0x04       | Over-voltage Fault                                            |
+| 3   | 4    | 0x08       | Inverter Over-temperature Fault                              |
+| 4   | 4    | 0x10       | Accelerator Input Shorted Fault                               |
+| 5   | 4    | 0x20       | Accelerator Input Open Fault                                  |
+| 6   | 4    | 0x40       | Direction Command Fault                                       |
+| 7   | 4    | 0x80       | Inverter Response Time-out Fault                              |
+| 8   | 5    | 0x01       | Hardware Gate / Desaturation Fault                            |
+| 9   | 5    | 0x02       | Hardware Over-current Fault                                   |
+| 10  | 5    | 0x04       | Under-voltage Fault                                           |
+| 11  | 5    | 0x08       | **CAN Command Message Lost Fault** (timeout — see §7.6)       |
+| 12  | 5    | 0x10       | Motor Over-temperature Fault                                  |
+| 13  | 5    | 0x20       | Reserved                                                      |
+| 14  | 5    | 0x40       | Reserved                                                      |
+| 15  | 5    | 0x80       | Reserved                                                      |
+| 16  | 6    | 0x01       | Brake Input Shorted Fault                                     |
+| 17  | 6    | 0x02       | Brake Input Open Fault                                        |
+| 18  | 6    | 0x04       | Module A Over-temperature Fault                               |
+| 19  | 6    | 0x08       | Module B Over-temperature Fault                               |
+| 20  | 6    | 0x10       | Module C Over-temperature Fault                               |
+| 21  | 6    | 0x20       | PCB Over-temperature Fault                                    |
+| 22  | 6    | 0x40       | Gate Drive Board 1 Over-temperature Fault                     |
+| 23  | 6    | 0x80       | Gate Drive Board 2 Over-temperature Fault                     |
+| 24  | 7    | 0x01       | Gate Drive Board 3 Over-temperature Fault                     |
+| 25  | 7    | 0x02       | Current Sensor Fault                                          |
+| 26  | 7    | 0x04       | Gen 3: Reserved; Gen 5: Gate Driver Over-Voltage              |
+| 27  | 7    | 0x08       | Gen 3: Hardware DC Bus Over-Voltage; Gen 5: Reserved          |
+| 28  | 7    | 0x10       | Gen 3: Reserved; Gen 5: Hardware DC Bus Over-voltage Fault    |
+| 29  | 7    | 0x20       | Reserved                                                      |
+| 30  | 7    | 0x40       | Resolver Not Connected                                        |
+| 31  | 7    | 0x80       | Reserved                                                      |
+
+---
+
+#### 0x0AC — Torque & Timer Information — 100 Hz
+
+| Bytes  | Signal             | Format  | Scale      | Description                                        |
+|--------|--------------------|---------|------------|----------------------------------------------------|
+| 0, 1   | Commanded Torque   | Torque  | N·m × 10   | Torque command currently in use                    |
+| 2, 3   | Torque Feedback    | Torque  | N·m × 10   | Estimated motor torque (from motor model)          |
+| 4, 5, 6, 7 | Power On Timer | Unsigned 32-bit | counts × 0.003 sec | Timer updated every 3 ms; rolls over ~5 months |
+
+---
+
+#### 0x0AD — Modulation Index & Flux Weakening Output — 100 Hz
+
+| Bytes | Signal               | Format      | Scale      | Description                                  |
+|-------|----------------------|-------------|------------|----------------------------------------------|
+| 0, 1  | Modulation Index     | Per-unit    | ÷ 100      | Actual modulation index = raw value / 100    |
+| 2, 3  | Flux Weakening Output| Current     | amps × 10  | Output of flux weakening regulator           |
+| 4, 5  | Id Command           | Current     | amps × 10  | Commanded D-axis current                     |
+| 6, 7  | Iq Command           | Current     | amps × 10  | Commanded Q-axis current                     |
+
+---
+
+#### 0x0AE — Firmware Information — 10 Hz
+
+| Bytes | Signal                  | Format | Description                                      |
+|-------|-------------------------|--------|--------------------------------------------------|
+| 0, 1  | EEPROM Version / Project Code | NA | Project-specific EEPROM version (factory use)  |
+| 2, 3  | Software Version        | NA     | Major.minor firmware version                     |
+| 4, 5  | Date Code (MMDD)        | NA     | Month and day of firmware build                  |
+| 6, 7  | Date Code (YYYY)        | NA     | Year of firmware build                           |
+
+---
+
+#### 0x0AF — Diagnostic Data — 100 Hz
+
+Content is defined in a separate Cascadia Motion document: "Download Diagnostic Data."
+Enable via EEPROM parameter CAN Diagnostic Data Transmit Active (address 158).
+
+---
+
+#### 0x0B0 — High Speed Message — 333 Hz (3 ms) — firmware 2042+
+
+This message is disabled by default. To enable it, set the Low Bit of
+CAN Active Messages Hi Word (EEPROM addr 237) to 0 — e.g., set Hi Word to 0xFFFE.
+
+| Bytes | Signal             | Format           | Scale      | Description                      |
+|-------|--------------------|------------------|------------|----------------------------------|
+| 0, 1  | Torque Command     | Torque           | N·m × 10   | Currently commanded torque       |
+| 2, 3  | Torque Feedback    | Torque           | N·m × 10   | Estimated motor torque           |
+| 4, 5  | Motor Speed        | Angular Velocity | RPM (1:1)  | Measured motor speed             |
+| 6, 7  | DC Bus Voltage     | High Voltage     | volts × 10 | Measured DC bus voltage          |
+
+---
+
+### 7.5 Command Message — 0x0C0 (Vehicle → PM100)
+
+The command message is the only message sent **to** the PM100 to control the motor.
+It must be in **CAN mode** (EEPROM Inverter Command Mode = 0).
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                     CAN MESSAGE MAP (default base = 0x0A0)                   │
-│                                                                              │
-│  DIRECTION: PM100 → VEHICLE (broadcast messages)                             │
-│  PM100 continuously transmits these at ~10 Hz without being asked            │
-│                                                                              │
-│  ID 0x0A0  │ Temperatures #1   │ IGBT/transistor temperatures                │
-│  ID 0x0A2  │ Temperatures #2   │ Additional thermal data                     │
-│  ID 0x0A4  │ Motor position    │ Flux, rotor position data                   │
-│  ID 0x0A6  │ Motor currents    │ IQ and ID feedback and commands             │
-│  ID 0x0A8  │ Voltage/current   │ DC bus voltage, DC link current             │
-│  ID 0x0AA  │ Internal states   │ VSM state, inverter state                   │
-│  ID 0x0AC  │ Fault codes       │ Active fault flags and status bits          │
-│                                                                              │
-│  DIRECTION: VEHICLE → PM100 (command messages)                               │
-│  Send at regular intervals — PM100 will disable if no command received       │
-│                                                                              │
-│  ID 0x0C0  │ Motor Command     │ Torque, speed, direction, enable            │
-│                                                                              │
-│  DIRECTION: VEHICLE ↔ PM100 (parameter access)                               │
-│  ID 0x0C8  │ Read/Write Request│ Vehicle sends to read or write a parameter  │
-│  ID 0x0C9  │ Read/Write Reply  │ PM100 responds with value or ack            │
+│            0x0C0 — COMMAND MESSAGE  (Vehicle → PM100)  8 bytes DLC           │
+│                  Send at ≥ 2 Hz; 10–50 ms typical; processed every 3 ms      │
+│                                                                               │
+│  Bytes 0–1  │ Torque Command    │ Signed 16-bit, little-endian               │
+│             │                   │ Units: N·m × 10 (e.g. 30 N·m = 300)        │
+│             │                   │ Positive = motoring, Negative = regen       │
+│             │                   │ In Speed Mode: acts as feedforward torque   │
+│             │                   │ In Torque Mode (fw 2048+): if Speed Command │
+│             │                   │   is non-zero, overrides Max Speed EEPROM   │
+│                                                                               │
+│  Bytes 2–3  │ Speed Command     │ Signed 16-bit, little-endian               │
+│             │                   │ Units: RPM (1:1)                            │
+│             │                   │ Primary setpoint in Speed Mode              │
+│             │                   │ In Torque Mode (fw 2048+): overrides        │
+│             │                   │   Max Speed EEPROM limit when non-zero      │
+│             │                   │ Positive = direction command direction;      │
+│             │                   │   Negative = opposite of direction command  │
+│                                                                               │
+│  Byte 4     │ Direction Command │ 0 = Reverse, 1 = Forward                   │
+│             │                   │ Changing direction while enabled auto-       │
+│             │                   │ disables inverter (safety lockout)          │
+│                                                                               │
+│  Byte 5     │ Control Bits      │ Bit 0: Inverter Enable  (0=Off, 1=On)       │
+│             │                   │ Bit 1: Inverter Discharge (0=Disable,        │
+│             │                   │          1=Enable active discharge)          │
+│             │                   │ Bit 2: Speed Mode Enable (0=no override,     │
+│             │                   │          1=force Torque→Speed mode change)   │
+│             │                   │         (does NOT change Speed→Torque)       │
+│             │                   │ Bits 4–7: Rolling Counter (Gen 5/CM only,   │
+│             │                   │           U4 value 0–15, must increment)    │
+│                                                                               │
+│  Bytes 6–7  │ Torque Limit      │ Signed 16-bit, N·m × 10                     │
+│             │                   │ 0 = use EEPROM motor/regen limits (default) │
+│             │                   │ Positive value = override both Motor and    │
+│             │                   │   Regen Torque limits to this value          │
+│             │                   │ Added in firmware version 1953;              │
+│             │                   │   set to 0x0000 on older firmware            │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 7.3 Command Message (0x0C0) — Controlling the Motor
+**Inverter Enable Lockout Safety Feature:**
+Before the inverter will accept an Enable command, it must first see a Disable command.
+This prevents accidental motor start-up at power-on. Sequence:
+1. Send 0x0C0 with Byte 5 Bit 0 = 0 (Disable) — clears lockout
+2. Send 0x0C0 with Byte 5 Bit 0 = 1 (Enable) — now accepted
 
-This is the most important message in CAN mode. Send at regular intervals (at least 10 Hz).
+**Sign Convention (Torque Mode, Forward direction):**
+
+| Torque Command | Motor Speed | Result           |
+|----------------|-------------|------------------|
+| Positive       | Positive    | Motoring (drive) |
+| Negative       | Positive    | Regen (brake)    |
+| Positive       | Negative    | Regen (brake)    |
+| Negative       | Negative    | Do not use       |
+
+**Working example — 30 N·m forward, inverter enabled (from official document):**
+
+```
+Byte 0 = 0x2C  (44 decimal)  ─┐ Torque = (1×256)+44 = 300 → 30.0 N·m
+Byte 1 = 0x01  (1 decimal)   ─┘
+Byte 2 = 0xF4  (244 decimal) ─┐ Speed = (1×256)+244 = 500 RPM (max speed override)
+Byte 3 = 0x01  (1 decimal)   ─┘
+Byte 4 = 0x01  Direction = Forward (1)
+Byte 5 = 0x01  Inverter Enable = 1
+Byte 6 = 0x00  ─┐ Torque Limit = 0 (use EEPROM defaults)
+Byte 7 = 0x00  ─┘
+```
+
+**Startup command sequence in CAN torque mode:**
+
+| Step | Byte 0–1      | Byte 2–3 | Byte 4 | Byte 5 | Byte 6–7 | Notes                              |
+|------|---------------|----------|--------|--------|----------|------------------------------------|
+| 1    | 0x00 0x00     | any      | 0      | 0      | 0x00 0x00| Send Disable first — clears lockout |
+| 2    | 0x64 0x00     | any      | 1      | 1      | 0x00 0x00| Enable + 10 N·m forward            |
+| 3    | 0xC8 0x00     | any      | 1      | 1      | 0x00 0x00| Increase to 20 N·m                 |
+| 4    | 0x9C 0xFF     | any      | 1      | 1      | 0x00 0x00| −10 N·m = regen (0xFF9C = −100)    |
+| 5    | any           | any      | any    | 0      | 0x00 0x00| Disable before direction change    |
+| 6    | 0x64 0x00     | any      | 0      | 1      | 0x00 0x00| Enable + 10 N·m reverse            |
+
+---
+
+### 7.6 Parameter Messages — 0x0C1 / 0x0C2
+
+Parameter messages allow reading and writing configuration values in the PM100.
+These are **not** the same as 0x0C8/0x0C9 (which do not exist in this protocol —
+the correct IDs are 0x0C1 for the request and 0x0C2 for the response).
+
+**Parameters can only be written when the motor is not enabled.**
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                   CAN COMMAND MESSAGE ID 0x0C0 (8 bytes)                     │
-│                                                                              │
-│  Byte 0–1  │ Torque Command        │ Signed 16-bit int, units: Nm × 10       │
-│            │                       │ e.g. 100 Nm → send 0x03E8               │
-│            │                       │ Negative = regen torque request         │
-│                                                                              │
-│  Byte 2–3  │ Speed Command         │ Signed 16-bit int, units: RPM           │
-│            │                       │ Used in speed control mode only         │
-│                                                                              │
-│  Byte 4    │ Direction + Enable    │ Bit 0: Direction (0=CW, 1=CCW)          │
-│            │                       │ Bit 1: Inverter Enable (1=enabled)      │
-│            │                       │ Must be 0x01 (fwd) or 0x03 (rev+ena)    │
-│                                                                              │
-│  Byte 5    │ Relay Control         │ Set to 0x00 for normal torque control   │
-│            │                       │ 0x55 activates relay control mode       │
-│                                                                              │
-│  Byte 6–7  │ Torque Limit          │ Signed 16-bit, Nm × 10                  │
-│            │                       │ Set to 0x0000 if not using (fw v1953+)  │
-│                                                                              │
-│  EXAMPLE — command 50 Nm forward, inverter enabled:                          │
-│    Byte 0: 0x01  Byte 1: 0xF4   → Torque = 0x01F4 = 500 → 50.0 Nm            │
-│    Byte 2: 0x00  Byte 3: 0x00   → Speed = 0 (unused in torque mode)          │
-│    Byte 4: 0x03                  → Direction=fwd, Enable=1                   │
-│    Byte 5: 0x00                  → Normal torque control                     │
-│    Byte 6: 0x00  Byte 7: 0x00   → No torque limit override                   │
+│         0x0C1 — READ / WRITE PARAMETER COMMAND  (Vehicle → PM100)            │
+│                                                                               │
+│  Bytes 0–1 │ Parameter Address │ Unsigned 16-bit, little-endian              │
+│            │                   │ 0–99   = General / command parameters        │
+│            │                   │ 100–499 = EEPROM (non-volatile) parameters   │
+│                                                                               │
+│  Byte 2    │ R/W Command       │ 0 = Read, 1 = Write                          │
+│                                                                               │
+│  Byte 3    │ Reserved          │ Send as 0x00                                 │
+│                                                                               │
+│  Bytes 4–5 │ Data (Lo)         │ Data value, format per parameter definition  │
+│            │                   │ If < 4 bytes: fill from byte 4 upward        │
+│                                                                               │
+│  Bytes 6–7 │ Reserved          │ Send as 0x00 0x00                            │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│         0x0C2 — READ / WRITE PARAMETER RESPONSE  (PM100 → Vehicle)           │
+│                                                                               │
+│  Bytes 0–1 │ Parameter Address │ Echoes the address from 0x0C1               │
+│            │                   │ Returns 0x00 0x00 if address not recognized  │
+│                                                                               │
+│  Byte 2    │ Write Success     │ 0 = not written / read response, 1 = success │
+│                                                                               │
+│  Byte 3    │ Reserved          │                                              │
+│                                                                               │
+│  Bytes 4–5 │ Data (Lo)         │ Read data (on read), or echo (on write)      │
+│                                                                               │
+│  Bytes 6–7 │ Reserved          │                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
+
+**Example — read parameter address 148 (CAN Active Messages Lo Word):**
+```
+Send  0x0C1: [0x94, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+              addr=148(0x94), read(0), reserved, data=0
+Recv  0x0C2: [0x94, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00]
+              addr=148, success=0(read), data=0xFFFF (all messages enabled)
+```
+
+**Example — write parameter address 21 (Fault Clear):**
+```
+Send  0x0C1: [0x15, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00]
+              addr=21(0x15), write(1), reserved, data=0
+Recv  0x0C2: [0x15, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00]
+              addr=21, write success=1, data=0
+```
+
+### 7.7 Key Command Parameters (Address 0–99, General — read/write via 0x0C1)
+
+| Addr | Name                    | Format         | Description                                          |
+|------|-------------------------|----------------|------------------------------------------------------|
+| 1    | Relay Command           | Unsigned int   | 0xAA00 = Normal Run; 0x55nn = External Relay Control (nn = relay bitmask: bit 0=relay1…bit5=relay6) |
+| 10   | Flux Command            | Flux (Wb×1000) | Override flux command                                |
+| 11   | Resolver PWM Delay Cmd  | Unsigned int (0–6250) | Calibration: resolver A/D timing           |
+| 12   | Gamma Adjust            | Degrees        | Resolver-motor magnetic field alignment              |
+| 20   | GUI Command             | Boolean        | Set to 0 to clear all active faults                  |
+| 21   | Fault Clear             | Boolean        | Write 0 to clear active faults (CAN + VSM mode)     |
+| 22   | Set PWM Frequency       | Unsigned int (6–24) | Gen 5/CM: override PWM freq (kHz); reverts on power cycle |
+| 23   | Shudder Compensation Gain | Unsigned int | 0=disable; >0=enable with gain = value/100 (fw 2048+) |
+| 31   | Diag. Data Trigger      | Unsigned int   | Non-zero triggers a diagnostic CAN data dump (fw 651E+) |
+
+### 7.8 Key EEPROM Parameters (Address 100–499 — write only when motor disabled)
+
+These persist through power cycles. Written via 0x0C1, readable via 0x0C1 read command.
+
+**Motor Configuration (addr 150–157)**
+
+| Addr | Name                  | Format          | Description                                      |
+|------|-----------------------|-----------------|--------------------------------------------------|
+| 150  | Motor Parameter Set   | Unsigned 8-bit  | Selects motor type preset                        |
+| 151  | Resolver PWM Delay    | Unsigned int    | Resolver A/D timing calibration (0–6250)         |
+| 152  | Gamma Adjust          | Degrees         | Resolver-to-motor field alignment angle          |
+| 154  | Sin Offset            | Low Voltage     | Resolver sine channel offset (Encoder calibration) |
+| 155  | Cos Offset            | Low Voltage     | Resolver cosine channel offset                   |
+
+**System Configuration (addr 140–174, 241–246)**
+
+| Addr | Name                  | Format   | Values                                           |
+|------|-----------------------|----------|--------------------------------------------------|
+| 140  | Pre-charge Bypassed   | Boolean  | 0=Pre-charge active, 1=Pre-charge bypassed       |
+| 142  | Inverter Run Mode     | Boolean  | 0=Torque Mode, 1=Speed Mode                      |
+| 143  | Inverter Command Mode | Boolean  | **0=CAN Mode**, 1=VSM Mode (default)             |
+| 149  | Key Switch Mode       | Unsigned | 0=simple on/off, 1=traditional ignition          |
+| 170  | Relay Output State    | Unsigned | Normal function vs CAN-controlled relays         |
+| 173  | Discharge Enable      | Unsigned | See Inverter Discharge Process manual            |
+| 174  | Serial Number         | Unsigned | Unit serial number                               |
+
+**CAN Configuration (addr 141–159, 171–172, 233–240)**
+
+| Addr | Name                        | Format   | Default | Description                                              |
+|------|-----------------------------|----------|---------|----------------------------------------------------------|
+| 141  | CAN ID Offset               | Unsigned | 0x0A0   | Base address for all CAN messages (range: 0–0x7C0)       |
+| 144  | CAN Extended Message ID     | Boolean  | 0       | 0=11-bit standard, 1=29-bit extended                     |
+| 145  | CAN Term Resistor Present   | Boolean  | 1       | 1=internal 120 Ω terminator active (PM only)             |
+| 146  | CAN Command Message Active  | Boolean  | 0       | 1=enable CAN command timeout watchdog                    |
+| 147  | CAN Bit Rate                | Unsigned | 250     | Bus speed in kbps: 125, 250, 500, 1000 (requires power cycle) |
+| 148  | CAN Active Messages Lo Word | Unsigned | 0xFFFF  | Bitmask to enable/disable each broadcast message         |
+| 158  | CAN Diag Data TX Active     | Boolean  | 1       | 1=broadcast 0x0AF diagnostic data                        |
+| 159  | CAN Inverter Enable Switch  | Boolean  | 0       | 1=DIN1 must also be high to allow inverter enable        |
+| 171  | CAN J1939 Option Active     | Boolean  | 0       | 1=use J1939 format (requires Extended ID = 1)            |
+| 172  | CAN Timeout                 | Unsigned | 333     | Timeout in counts × 3 ms (333 = 999 ms)                  |
+| 177  | CAN OBD2 Enable             | Boolean  | 0       | 1–7 enables OBD2 support with address offset             |
+| 178  | CAN BMS Limit Enable        | Boolean  | 0       | 1=accept Orion BMS message at 0x202 for torque limiting  |
+| 233  | CAN Slave Cmd ID            | Unsigned | 0       | Address of slave controller (0=disabled); = slave CAN offset + 0x20 |
+| 234  | CAN Slave Dir               | Unsigned | 0       | 0=slave same direction as master, 1=slave opposite       |
+| 235  | CAN Fast Msg Rate (ms)      | Unsigned | 10      | Broadcast period for "Fast" group (100 Hz); 0=disable    |
+| 236  | CAN Slow Msg Rate (ms)      | Unsigned | 100     | Broadcast period for "Slow" group (10 Hz); 0=disable     |
+| 237  | CAN Active Messages Hi Word | Unsigned | 0xFFFF  | Enable/disable mailboxes (keep 0xFFFF; 0xFFFE enables 0x0B0) |
+
+**Current Parameters (addr 100–109)**
+
+| Addr | Name               | Format  | Description                                     |
+|------|--------------------|---------|-------------------------------------------------|
+| 100  | Iq Limit           | Current (A×10) | Q-axis (torque-producing) current limit  |
+| 101  | Id Limit           | Current (A×10) | D-axis (flux-producing) current limit    |
+| 107  | Ia Offset EEPROM   | ADC Count | Phase A current sensor offset (default 2048)  |
+| 108  | Ib Offset EEPROM   | ADC Count | Phase B current sensor offset (default 2048)  |
+| 109  | Ic Offset EEPROM   | ADC Count | Phase C current sensor offset (default 2048)  |
+
+**Voltage & Flux (addr 102–106)**
+
+| Addr | Name                | Format       | Description                                         |
+|------|---------------------|--------------|-----------------------------------------------------|
+| 102  | DC Voltage Limit    | High Voltage | Over-voltage protection threshold                   |
+| 103  | DC Voltage Hysteresis | High Voltage | Hysteresis for leaving over-voltage condition      |
+| 104  | DC Under-voltage Limit | High Voltage | Under-voltage fault threshold (0=disabled)        |
+| 106  | Vehicle Flux Command | Flux        | Back-EMF flux constant for the motor               |
+
+**Temperature (addr 112–115, 203)**
+
+| Addr | Name                  | Format      | Description                                              |
+|------|-----------------------|-------------|----------------------------------------------------------|
+| 112  | Inverter Over-Temp    | Temperature (°C×10) | Shutdown threshold e.g. 85°C = 850             |
+| 113  | Motor Over-Temp       | Temperature (°C×10) | Motor shutdown threshold e.g. 150°C = 1500     |
+| 114  | Zero Torque Temp      | Temperature (°C×10) | Motor temp at which torque is reduced to zero  |
+| 115  | Full Torque Temp      | Temperature (°C×10) | Motor temp at which full torque is available   |
+| 203  | RTD Selection         | Unsigned    | Bit 0: RTD1 (0=1000Ω, 1=100Ω); Bit 1: RTD2            |
+
+**Torque (addr 129–131, 164–168)**
+
+| Addr | Name               | Format  | Description                                                 |
+|------|--------------------|---------|-------------------------------------------------------------|
+| 129  | Motor Torque Limit | Torque (N·m×10) | Maximum motoring torque                             |
+| 130  | REGEN Torque Limit | Torque (N·m×10) | Regen torque when pedal released (no brake)         |
+| 131  | Braking Torque Limit | Torque (N·m×10) | Regen torque when brake active                    |
+| 164  | Kp Torque          | Prop. Gain (×10000) | Torque regulator proportional gain              |
+| 165  | Ki Torque          | Int. Gain (×10000)  | Torque regulator integral gain                  |
+| 166  | Kd Torque          | Deriv. Gain (×100)  | Torque regulator derivative gain                |
+| 167  | Klp Torque         | LP Gain (×10000)    | Torque regulator low-pass filter gain           |
+| 168  | Torque Rate Limit  | Torque  | Max torque change per step (0.1–250 N·m); slows ramp       |
+
+**Speed (addr 111, 126–128, 160–163, 169)**
+
+| Addr | Name               | Format           | Description                                            |
+|------|--------------------|------------------|--------------------------------------------------------|
+| 111  | Motor Over-speed   | Angular Velocity | Over-speed fault threshold (RPM)                       |
+| 126  | REGEN Fade Speed   | Angular Velocity | Speed below which regen torque begins to fade          |
+| 127  | Break Speed        | Angular Velocity | Speed below which max torque is reduced (field weak.)  |
+| 128  | Max Speed          | Angular Velocity | Maximum allowable speed                               |
+| 160  | Kp Speed           | Prop. Gain       | Speed regulator proportional gain                      |
+| 161  | Ki Speed           | Int. Gain        | Speed regulator integral gain                          |
+| 162  | Kd Speed           | Deriv. Gain      | Speed regulator derivative gain                        |
+| 163  | Klp Speed          | LP Gain          | Speed regulator low-pass filter gain                   |
+| 169  | Speed Rate Limit   | Speed            | Max speed change per step (100–5100 RPM)               |
+
+### 7.9 CAN Timeout / Watchdog
+
+If EEPROM parameter **CAN Command Message Active** (addr 146) = 1:
+- The PM100 expects a 0x0C0 message within **CAN Timeout** × 3 ms (default 333 × 3 = 999 ms).
+- If the timeout expires: **Run Fault bit 11** (CAN Command Message Lost) is set and the inverter disables.
+- Recommendation: send 0x0C0 at 10–50 ms intervals for responsive vehicle control.
+- If CAN Command Message Active = 0 (default), the inverter holds the last received command indefinitely.
+
+### 7.10 Rolling Counter (Gen 5 / CM firmware only)
+
+Gen 5 and CM controllers support an optional rolling counter in Byte 5 bits 4–7 of the 0x0C0
+command message to detect lost or repeated CAN frames. The counter increments 0→15→0.
+
+| EEPROM Parameter              | Addr | Default | Description                                           |
+|-------------------------------|------|---------|-------------------------------------------------------|
+| CAN Debounce Counter Max      | 238  | 20      | Debounce count that triggers a fault; 0=disable RC    |
+| CAN Debounce Up Count         | 239  | 5       | Counts added per rolling counter error                |
+| CAN Debounce Down Count       | 240  | 3       | Counts removed per correct rolling counter message    |
+
+Fault triggered: Run Fault bit 11 (same as CAN Command Timeout).
+
+### 7.11 Orion BMS Integration
+
+Enable via EEPROM CAN BMS Limit Enable (addr 178 = 1). The PM100 then accepts:
+
+| BMS CAN ID | 0x202 (514 decimal)                                  |
+|------------|------------------------------------------------------|
+| Byte 0–1   | Maximum discharge current in Amps (little-endian, unsigned) |
+| Byte 2–3   | Maximum charge current in Amps (little-endian, unsigned)    |
+| Byte 4–7   | Unused                                               |
+
+Example: `0x02 0x01 0x04 0x02 0x00 0x00 0x00 0x00` → discharge limit = 258 A, charge limit = 516 A.
 
 ---
 
@@ -1172,8 +1793,28 @@ through power cycles.
 
 ---
 
-*Document compiled from: PM100 Series AC Motor Drive User's Manual (rev h, 2010), PM100 Software User
-Manual V3.3, PM Family Data Sheet, PM/RM Hardware Users Manual V3.0, Rinehart PM100 CAN Library
-documentation, and TE Connectivity AMPSEAL product datasheets.*
+## 14. References
 
-*Authoritative source for production designs: [cascadiamotion.com/documentation](https://www.cascadiamotion.com/documentation)*
+The table below lists the source documents used to compile this reference guide. Where content is derived from a specific source, the section notes it. If the BlueBoy firmware version differs from the document versions listed here, cross-check the relevant source before relying on specific byte offsets, parameter addresses, or scaling factors.
+
+| Ref | Document | Version / Date | Publisher | Notes |
+|-----|----------|---------------|-----------|-------|
+| [1] | CAN Protocol | Rev 5.9, 25 Feb 2022 | Cascadia Motion | Primary source for all of §7 (CAN messages, byte definitions, EEPROM parameter addresses). Covers PM, RM, PM Gen 5, and CM families. Firmware-specific differences noted within §7. |
+| [2] | PM100 User Manual | 3/8/2011 | Rinehart Motion Systems LLC | Primary source for connector pinouts (§3, §4), power connections (§2), VSM (§10), pre-charge (§3.3.2), RS-232 (§6), and I/O electrical details (§5). |
+| [3] | PM100DX Inverter Drawing | 180-100-002.00, Rev 2.3 | Swindon Silicon Systems / SWIND EV | Factory low-voltage wiring schematic (3 sheets). Sheet 1 (general arrangement) publicly available as rev .01 from Swindon Powertrain webshop. Sheets 2–3 not publicly hosted. |
+| [4] | PM100 MotoHawk CAN Library | — | New Eagle / Rinehart | Supplementary CAN signal definitions. Available via New Eagle wiki. |
+| [5] | AMPSEAL Connector Datasheet | — | TE Connectivity | J1 connector PN 776164-1, J2 connector PN 770680-1, crimp contact PN 770854-1. |
+
+### Firmware version notes for §7 (CAN)
+
+Several CAN message formats changed across firmware releases. If RMS GUI shows a firmware version outside the ranges below, verify the affected messages against [Ref 1] directly.
+
+| Firmware version | Change |
+|---|---|
+| Before fw 1953 | Bytes 6–7 of 0x0C0 (Torque Limit) not supported — send `0x0000` |
+| Before fw 1995 | 0x0A3 uses four 16-bit analog inputs; fw 1995+ packs six 10-bit inputs |
+| Before fw 2042 | 0x0B0 (333 Hz high-speed message) does not exist; disabled by default even when present |
+| Before fw 2048 | Speed Command bytes (0x0C0 bytes 2–3) only used in Speed Mode; fw 2048+ also applies as Max Speed override in Torque Mode |
+| Gen 5 / CM only | Rolling counter (§7.10) and bits 4–7 of 0x0C0 byte 5 not present on PM Gen 2 (PM100) |
+
+**To identify the firmware version on BlueBoy's unit:** connect RMS GUI and read the firmware version displayed on the main screen, or read CAN message 0x0AE bytes 4–7 (software version + build date).

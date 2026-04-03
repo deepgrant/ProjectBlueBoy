@@ -15,12 +15,17 @@ The primary reference is **[PM100_Reference_Guide.md](PM100_Reference_Guide.md)*
 | Analog/digital I/O electrical specs | [§5 I/O Electrical Details](PM100_Reference_Guide.md#5-inputoutput-electrical-details) |
 | RS-232 wiring, baud rate, and serial testing | [§6 RS-232 Serial Interface](PM100_Reference_Guide.md#6-rs-232-serial-interface) |
 | CAN A/B bus wiring and termination | [§7 CAN Bus Interface](PM100_Reference_Guide.md#7-can-bus-interface) |
+| CAN byte-level message specs (0x0A0–0x0B0, 0x0C0–0x0C2) | [§7.4 Broadcast Message Byte Definitions](PM100_Reference_Guide.md#74-broadcast-message-byte-definitions) |
+| Command message 0x0C0 torque/speed/enable | [§7.5 Command Message](PM100_Reference_Guide.md#75-command-message--0x0c0-vehicle--pm100) |
+| Parameter read/write messages 0x0C1 / 0x0C2 | [§7.6 Parameter Messages](PM100_Reference_Guide.md#76-parameter-messages--0x0c1--0x0c2) |
+| EEPROM parameter address table | [§7.8 Key EEPROM Parameters](PM100_Reference_Guide.md#78-key-eeprom-parameters-address-100499--write-only-when-motor-disabled) |
 | RMS GUI diagnostics software | [§8 RMS GUI Software](PM100_Reference_Guide.md#8-rms-gui-software) |
 | C2Prog firmware flashing procedure | [§9 C2Prog Firmware Flashing](PM100_Reference_Guide.md#9-c2prog-firmware-flashing) |
 | Enable/disable and fault state machine | [§10 Vehicle State Machine](PM100_Reference_Guide.md#10-vehicle-state-machine-vsm) |
 | Regenerative braking energy path | [§11 Regenerative Braking](PM100_Reference_Guide.md#11-regenerative-braking) |
 | EEPROM configuration parameters | [§12 Key Configuration Parameters](PM100_Reference_Guide.md#12-key-configuration-parameters) |
 | Terminology and abbreviations | [§13 Glossary](PM100_Reference_Guide.md#13-glossary) |
+| Source documents and firmware version notes | [§14 References](PM100_Reference_Guide.md#14-references) |
 
 ## Where to start
 
