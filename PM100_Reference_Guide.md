@@ -788,19 +788,19 @@ A CAN 2.0A (standard frame) message has the following layout. Understanding this
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                      CAN 2.0A STANDARD FRAME LAYOUT                          │
 │                                                                              │
-│  ┌─────┬─────────────┬─────┬─────┬─────┬─────────────────────┬──────┬─────┐ │
-│  │ SOF │ Identifier  │ RTR │ IDE │ DLC │     Data Bytes       │ CRC  │ EOF │ │
-│  │ 1b  │   11 bits   │ 1b  │ 1b  │ 4b  │      0–8 bytes       │ 16b  │ 7b  │ │
-│  └─────┴─────────────┴─────┴─────┴─────┴─────────────────────┴──────┴─────┘ │
+│  ┌─────┬─────────────┬─────┬─────┬─────┬─────────────────────┬──────┬─────┐  │
+│  │ SOF │ Identifier  │ RTR │ IDE │ DLC │     Data Bytes      │ CRC  │ EOF │  │
+│  │ 1b  │   11 bits   │ 1b  │ 1b  │ 4b  │      0–8 bytes      │ 16b  │ 7b  │  │
+│  └─────┴─────────────┴─────┴─────┴─────┴─────────────────────┴──────┴─────┘  │
 │                                                                              │
-│  SOF         Start of Frame — dominant (0) bit marking start of message     │
+│  SOF         Start of Frame — dominant (0) bit marking start of message      │
 │  Identifier  11-bit message ID — defines message type and priority           │
-│              Lower ID = higher priority on the bus                          │
-│  RTR         Remote Transmission Request — 0 for normal data frames         │
-│  IDE         Identifier Extension — 0 for standard (11-bit) CAN 2.0A frames │
-│  DLC         Data Length Code — number of data bytes (0–8)                  │
-│  Data        Payload — 0 to 8 bytes of application data                     │
-│  CRC         Cyclic Redundancy Check — 15-bit error detection, hardware only│
+│              Lower ID = higher priority on the bus                           │
+│  RTR         Remote Transmission Request — 0 for normal data frames          │
+│  IDE         Identifier Extension — 0 for standard (11-bit) CAN 2.0A frames  │
+│  DLC         Data Length Code — number of data bytes (0–8)                   │
+│  Data        Payload — 0 to 8 bytes of application data                      │
+│  CRC         Cyclic Redundancy Check — 15-bit error detection, hardware only │
 │  EOF         End of Frame — 7 recessive bits, handled by hardware            │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
