@@ -900,6 +900,19 @@ Windows USB-serial adapters default to **9600 baud**. Change this to match the P
 2. Enter the COM port identifier (e.g. `COM3`) and save.
 3. Launch RMS GUI — it should connect and begin displaying live parameters.
 
+### 8.2 CM Diagnostic Data Viewer
+
+The **CM Diagnostic Data Viewer** is a separate Windows tool provided by Cascadia Motion for offline analysis of inverter data logs and fault snapshots. It complements RMS GUI but does not require a live RS-232 connection — it works on saved log files captured from the PM100.
+
+| | RMS GUI | CM Diagnostic Data Viewer |
+|---|---|---|
+| Connection | Live RS-232 | Offline — reads saved log files |
+| Use case | Real-time parameters, config, fault monitoring | Replay and inspect fault snapshots after the fact |
+| When to use | During bench testing and commissioning | Post-incident fault analysis |
+
+Download (Cascadia Motion hosted): `https://app.box.com/s/u0b3yx87set8b3e41w93io0zrq6bpe1u/file/923752730376`
+Release 104 (February 2022), ~2.5 MB ZIP — extract and run on Windows.
+
 ---
 
 ## 9. C2Prog Firmware Flashing
