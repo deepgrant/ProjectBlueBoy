@@ -836,7 +836,7 @@ Individual messages can be enabled/disabled using EEPROM parameter address 148
 │  0x0AE   │ 10 Hz     │ Firmware Information             │ bit 14 (0x4000)      │
 │  0x0AF   │ 100 Hz    │ Diagnostic Data (see diag manual)│ bit 15 (0x8000)      │
 │  0x0B0   │ 333 Hz    │ High Speed Message (fw 2042+)    │ Hi Word bit 0=0      │
-│           │ (3 ms)   │ Torque cmd/fdbk, speed, DC bus   │ (set Hi Word 0xFFFE) │
+│          │ (3 ms)    │ Torque cmd/fdbk, speed, DC bus   │ (set Hi Word 0xFFFE) │
 └────────────────────────────────────────────────────────────────────────────────┘
 ```
 
