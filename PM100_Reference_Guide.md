@@ -4,6 +4,10 @@
 This guide covers the Cascadia Motion / Rinehart Motion Systems PM100 AC motor inverter: connectors,
 communication interfaces, software tools, and system integration.
 
+**Repository:** `https://github.com/deepgrant/ProjectBlueBoy`
+
+> **Contributing edits:** This document is maintained in a GitHub repository. If you are unfamiliar with GitHub and would like to suggest corrections or additions, see [Appendix B](#appendix-b--editing-this-document-on-windows) for a step-by-step guide to editing and submitting changes on Windows — no prior Git experience required.
+
 ---
 
 ## Contents
@@ -1878,3 +1882,57 @@ The key property is that **dominant overrides recessive** on the wire. If one no
 **Recessive bits in the EOF field** mean the transmitting node releases the bus — it stops driving the differential voltage and allows the line to float back to its idle state (~0 V differential). The 7 recessive EOF bits signal to all other nodes that the frame is complete and the bus is free.
 
 In practice this is handled entirely by the CAN controller hardware. It is only relevant when debugging at the electrical level with an oscilloscope.
+
+---
+
+## Appendix B — Editing This Document on Windows
+
+The repository is hosted on GitHub at `https://github.com/deepgrant/ProjectBlueBoy`. The recommended way to contribute updates on Windows is **GitHub Desktop** + **VS Code**.
+
+### B.1 Recommended Tools
+
+| Tool | Purpose | Download |
+|---|---|---|
+| GitHub Desktop | Clone repo, commit, push/pull — no command line needed | `https://desktop.github.com` |
+| VS Code | Edit Markdown files with live preview | `https://code.visualstudio.com` |
+| Markdown Preview Enhanced (VS Code extension) | Side-by-side rendered preview while editing | Install from VS Code Extensions panel |
+
+### B.2 First-Time Setup
+
+1. Install **GitHub Desktop** and sign in with your GitHub account.
+2. Click **File → Clone Repository** → enter `deepgrant/ProjectBlueBoy` → choose a local folder → **Clone**.
+3. Install **VS Code**, then open the cloned folder via **File → Open Folder**.
+4. Install the **Markdown Preview Enhanced** extension (search in the Extensions panel, Ctrl+Shift+X).
+
+### B.3 Contributor Workflow — Fork and Pull Request (Recommended)
+
+Rather than editing `main` directly, the recommended approach is to **fork the repository** and submit changes via a **pull request (PR)**. This keeps `main` stable and allows changes to be reviewed before merging.
+
+**One-time setup:**
+1. Open `https://github.com/deepgrant/ProjectBlueBoy` in a browser and click **Fork** (top right). This creates your own copy of the repo under your GitHub account.
+2. In GitHub Desktop, clone your fork: **File → Clone Repository** → select your forked copy.
+
+**For each set of changes:**
+1. In GitHub Desktop, click **Current Branch → New Branch** and give it a descriptive name (e.g. `update-can-section`).
+2. Open the folder in VS Code, make your edits, and save.
+3. Switch back to GitHub Desktop — your changes appear under *Changes*.
+4. Add a summary and click **Commit to `update-can-section`**.
+5. Click **Push origin** to upload the branch to your fork on GitHub.
+6. GitHub will prompt you to **Open Pull Request** — click it, add a brief description of what you changed, and submit.
+7. The repo owner reviews the PR and merges it into `main` when ready.
+
+### B.4 Making and Saving Changes
+
+1. Open the file you want to edit in VS Code (e.g. `PM100_Reference_Guide.md`).
+2. Press **Ctrl+Shift+V** to open a live Markdown preview alongside the editor.
+3. Make your edits and save (**Ctrl+S**).
+4. Follow the commit and push steps in §B.3 above.
+
+### B.5 Keeping Your Copy Up to Date
+
+Before starting any edits, sync your fork with the upstream repository:
+
+1. In GitHub Desktop click **Fetch origin** to check for new changes.
+2. If the upstream `main` has moved ahead of your fork, click **Branch → Merge into Current Branch** and select `upstream/main`.
+
+This avoids conflicts when your PR is reviewed.

@@ -25,7 +25,7 @@ The primary reference is **[PM100_Reference_Guide.md](PM100_Reference_Guide.md)*
 | Regenerative braking energy path | [§11 Regenerative Braking](PM100_Reference_Guide.md#11-regenerative-braking) |
 | EEPROM configuration parameters | [§12 Key Configuration Parameters](PM100_Reference_Guide.md#12-key-configuration-parameters) |
 | Terminology and abbreviations | [§13 Glossary](PM100_Reference_Guide.md#13-glossary) |
-| Source documents and firmware version notes | [§14 References](PM100_Reference_Guide.md#14-references) |\n| CAN dominant/recessive bit explanation | [Appendix A.1](PM100_Reference_Guide.md#a1-dominant-and-recessive-bits) |
+| Source documents and firmware version notes | [§14 References](PM100_Reference_Guide.md#14-references) |\n| CAN dominant/recessive bit explanation | [Appendix A.1](PM100_Reference_Guide.md#a1-dominant-and-recessive-bits) |\n| Editing this document on Windows (Git + VS Code) | [Appendix B](PM100_Reference_Guide.md#appendix-b--editing-this-document-on-windows) |
 
 ## Where to start
 
