@@ -813,31 +813,31 @@ Individual messages can be enabled/disabled using EEPROM parameter address 148
 (CAN Active Messages Lo Word).
 
 ```
-┌───────────────────────────────────────────────────────────────────────────────┐
-│              CAN BROADCAST MESSAGES (PM100 → Vehicle Controller)              │
-│  Direction: PM100 transmits; vehicle controller reads (receive only)          │
-│                                                                               │
+┌────────────────────────────────────────────────────────────────────────────────┐
+│              CAN BROADCAST MESSAGES (PM100 → Vehicle Controller)               │
+│  Direction: PM100 transmits; vehicle controller reads (receive only)           │
+│                                                                                │
 │  ID      │ Rate      │ Content                          │ Enable bit (Addr 148)│
-│──────────┼───────────┼──────────────────────────────────┼──────────────────── │
-│  0x0A0   │ 10 Hz     │ Temperatures #1 (IGBT modules)   │ bit 0  (0x0001)     │
-│  0x0A1   │ 10 Hz     │ Temperatures #2 (board + RTDs)   │ bit 1  (0x0002)     │
-│  0x0A2   │ 10 Hz     │ Temperatures #3 (motor + shudder)│ bit 2  (0x0004)     │
-│  0x0A3   │ 100 Hz    │ Analog Input Voltages            │ bit 3  (0x0008)     │
-│  0x0A4   │ 100 Hz    │ Digital Input Status             │ bit 4  (0x0010)     │
-│  0x0A5   │ 100 Hz    │ Motor Position Information       │ bit 5  (0x0020)     │
-│  0x0A6   │ 100 Hz    │ Current Information              │ bit 6  (0x0040)     │
-│  0x0A7   │ 100 Hz    │ Voltage Information              │ bit 7  (0x0080)     │
-│  0x0A8   │ 100 Hz    │ Flux Information                 │ bit 8  (0x0100)     │
-│  0x0A9   │ 10 Hz     │ Internal Voltages (power rails)  │ bit 9  (0x0200)     │
-│  0x0AA   │ 100 Hz    │ Internal States (VSM, faults)    │ bit 10 (0x0400)     │
-│  0x0AB   │ 100 Hz    │ Fault Codes (POST + Run faults)  │ bit 11 (0x0800)     │
-│  0x0AC   │ 100 Hz    │ Torque & Timer Information       │ bit 12 (0x1000)     │
-│  0x0AD   │ 100 Hz    │ Modulation Index & Flux Weak.    │ bit 13 (0x2000)     │
-│  0x0AE   │ 10 Hz     │ Firmware Information             │ bit 14 (0x4000)     │
-│  0x0AF   │ 100 Hz    │ Diagnostic Data (see diag manual)│ bit 15 (0x8000)     │
-│  0x0B0   │ 333 Hz    │ High Speed Message (fw 2042+)    │ Hi Word bit 0=0     │
-│           │ (3 ms)   │ Torque cmd/fdbk, speed, DC bus   │ (set Hi Word 0xFFFE)│
-└───────────────────────────────────────────────────────────────────────────────┘
+│──────────┼───────────┼──────────────────────────────────┼───────────────────── │
+│  0x0A0   │ 10 Hz     │ Temperatures #1 (IGBT modules)   │ bit 0  (0x0001)      │
+│  0x0A1   │ 10 Hz     │ Temperatures #2 (board + RTDs)   │ bit 1  (0x0002)      │
+│  0x0A2   │ 10 Hz     │ Temperatures #3 (motor + shudder)│ bit 2  (0x0004)      │
+│  0x0A3   │ 100 Hz    │ Analog Input Voltages            │ bit 3  (0x0008)      │
+│  0x0A4   │ 100 Hz    │ Digital Input Status             │ bit 4  (0x0010)      │
+│  0x0A5   │ 100 Hz    │ Motor Position Information       │ bit 5  (0x0020)      │
+│  0x0A6   │ 100 Hz    │ Current Information              │ bit 6  (0x0040)      │
+│  0x0A7   │ 100 Hz    │ Voltage Information              │ bit 7  (0x0080)      │
+│  0x0A8   │ 100 Hz    │ Flux Information                 │ bit 8  (0x0100)      │
+│  0x0A9   │ 10 Hz     │ Internal Voltages (power rails)  │ bit 9  (0x0200)      │
+│  0x0AA   │ 100 Hz    │ Internal States (VSM, faults)    │ bit 10 (0x0400)      │
+│  0x0AB   │ 100 Hz    │ Fault Codes (POST + Run faults)  │ bit 11 (0x0800)      │
+│  0x0AC   │ 100 Hz    │ Torque & Timer Information       │ bit 12 (0x1000)      │
+│  0x0AD   │ 100 Hz    │ Modulation Index & Flux Weak.    │ bit 13 (0x2000)      │
+│  0x0AE   │ 10 Hz     │ Firmware Information             │ bit 14 (0x4000)      │
+│  0x0AF   │ 100 Hz    │ Diagnostic Data (see diag manual)│ bit 15 (0x8000)      │
+│  0x0B0   │ 333 Hz    │ High Speed Message (fw 2042+)    │ Hi Word bit 0=0      │
+│           │ (3 ms)   │ Torque cmd/fdbk, speed, DC bus   │ (set Hi Word 0xFFFE) │
+└────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 **Broadcast rate notes:** "Slow" group (10 Hz) = 0x0A0, 0x0A1, 0x0A2, 0x0A9, 0x0AE.
