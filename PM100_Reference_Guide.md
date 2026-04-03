@@ -852,31 +852,31 @@ Individual messages can be enabled/disabled using EEPROM parameter address 148
 (CAN Active Messages Lo Word).
 
 ```
-┌───────────────────────────────────────────────────────────────────────────────┐
-│              CAN BROADCAST MESSAGES (PM100 → Vehicle Controller)              │
-│  Direction: PM100 transmits; vehicle controller reads (receive only)          │
-│                                                                               │
+┌────────────────────────────────────────────────────────────────────────────────┐
+│              CAN BROADCAST MESSAGES (PM100 → Vehicle Controller)               │
+│  Direction: PM100 transmits; vehicle controller reads (receive only)           │
+│                                                                                │
 │  ID      │ Rate      │ Content                          │ Enable bit (Addr 148)│
-│──────────┼───────────┼──────────────────────────────────┼──────────────────── │
-│  0x0A0   │ 10 Hz     │ Temperatures #1 (IGBT modules)   │ bit 0  (0x0001)     │
-│  0x0A1   │ 10 Hz     │ Temperatures #2 (board + RTDs)   │ bit 1  (0x0002)     │
-│  0x0A2   │ 10 Hz     │ Temperatures #3 (motor + shudder)│ bit 2  (0x0004)     │
-│  0x0A3   │ 100 Hz    │ Analog Input Voltages            │ bit 3  (0x0008)     │
-│  0x0A4   │ 100 Hz    │ Digital Input Status             │ bit 4  (0x0010)     │
-│  0x0A5   │ 100 Hz    │ Motor Position Information       │ bit 5  (0x0020)     │
-│  0x0A6   │ 100 Hz    │ Current Information              │ bit 6  (0x0040)     │
-│  0x0A7   │ 100 Hz    │ Voltage Information              │ bit 7  (0x0080)     │
-│  0x0A8   │ 100 Hz    │ Flux Information                 │ bit 8  (0x0100)     │
-│  0x0A9   │ 10 Hz     │ Internal Voltages (power rails)  │ bit 9  (0x0200)     │
-│  0x0AA   │ 100 Hz    │ Internal States (VSM, faults)    │ bit 10 (0x0400)     │
-│  0x0AB   │ 100 Hz    │ Fault Codes (POST + Run faults)  │ bit 11 (0x0800)     │
-│  0x0AC   │ 100 Hz    │ Torque & Timer Information       │ bit 12 (0x1000)     │
-│  0x0AD   │ 100 Hz    │ Modulation Index & Flux Weak.    │ bit 13 (0x2000)     │
-│  0x0AE   │ 10 Hz     │ Firmware Information             │ bit 14 (0x4000)     │
-│  0x0AF   │ 100 Hz    │ Diagnostic Data (see diag manual)│ bit 15 (0x8000)     │
-│  0x0B0   │ 333 Hz    │ High Speed Message (fw 2042+)    │ Hi Word bit 0=0     │
-│           │ (3 ms)   │ Torque cmd/fdbk, speed, DC bus   │ (set Hi Word 0xFFFE)│
-└───────────────────────────────────────────────────────────────────────────────┘
+│──────────┼───────────┼──────────────────────────────────┼───────────────────── │
+│  0x0A0   │ 10 Hz     │ Temperatures #1 (IGBT modules)   │ bit 0  (0x0001)      │
+│  0x0A1   │ 10 Hz     │ Temperatures #2 (board + RTDs)   │ bit 1  (0x0002)      │
+│  0x0A2   │ 10 Hz     │ Temperatures #3 (motor + shudder)│ bit 2  (0x0004)      │
+│  0x0A3   │ 100 Hz    │ Analog Input Voltages            │ bit 3  (0x0008)      │
+│  0x0A4   │ 100 Hz    │ Digital Input Status             │ bit 4  (0x0010)      │
+│  0x0A5   │ 100 Hz    │ Motor Position Information       │ bit 5  (0x0020)      │
+│  0x0A6   │ 100 Hz    │ Current Information              │ bit 6  (0x0040)      │
+│  0x0A7   │ 100 Hz    │ Voltage Information              │ bit 7  (0x0080)      │
+│  0x0A8   │ 100 Hz    │ Flux Information                 │ bit 8  (0x0100)      │
+│  0x0A9   │ 10 Hz     │ Internal Voltages (power rails)  │ bit 9  (0x0200)      │
+│  0x0AA   │ 100 Hz    │ Internal States (VSM, faults)    │ bit 10 (0x0400)      │
+│  0x0AB   │ 100 Hz    │ Fault Codes (POST + Run faults)  │ bit 11 (0x0800)      │
+│  0x0AC   │ 100 Hz    │ Torque & Timer Information       │ bit 12 (0x1000)      │
+│  0x0AD   │ 100 Hz    │ Modulation Index & Flux Weak.    │ bit 13 (0x2000)      │
+│  0x0AE   │ 10 Hz     │ Firmware Information             │ bit 14 (0x4000)      │
+│  0x0AF   │ 100 Hz    │ Diagnostic Data (see diag manual)│ bit 15 (0x8000)      │
+│  0x0B0   │ 333 Hz    │ High Speed Message (fw 2042+)    │ Hi Word bit 0=0      │
+│          │ (3 ms)    │ Torque cmd/fdbk, speed, DC bus   │ (set Hi Word 0xFFFE) │
+└────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 **Broadcast rate notes:** "Slow" group (10 Hz) = 0x0A0, 0x0A1, 0x0A2, 0x0A9, 0x0AE.
@@ -1203,45 +1203,45 @@ The command message is the only message sent **to** the PM100 to control the mot
 It must be in **CAN mode** (EEPROM Inverter Command Mode = 0).
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│            0x0C0 — COMMAND MESSAGE  (Vehicle → PM100)  8 bytes DLC           │
-│                  Send at ≥ 2 Hz; 10–50 ms typical; processed every 3 ms      │
+┌───────────────────────────────────────────────────────────────────────────────┐
+│            0x0C0 — COMMAND MESSAGE  (Vehicle → PM100)  8 bytes DLC            │
+│                  Send at ≥ 2 Hz; 10–50 ms typical; processed every 3 ms       │
 │                                                                               │
-│  Bytes 0–1  │ Torque Command    │ Signed 16-bit, little-endian               │
-│             │                   │ Units: N·m × 10 (e.g. 30 N·m = 300)        │
+│  Bytes 0–1  │ Torque Command    │ Signed 16-bit, little-endian                │
+│             │                   │ Units: N·m × 10 (e.g. 30 N·m = 300)         │
 │             │                   │ Positive = motoring, Negative = regen       │
 │             │                   │ In Speed Mode: acts as feedforward torque   │
 │             │                   │ In Torque Mode (fw 2048+): if Speed Command │
 │             │                   │   is non-zero, overrides Max Speed EEPROM   │
 │                                                                               │
-│  Bytes 2–3  │ Speed Command     │ Signed 16-bit, little-endian               │
+│  Bytes 2–3  │ Speed Command     │ Signed 16-bit, little-endian                │
 │             │                   │ Units: RPM (1:1)                            │
 │             │                   │ Primary setpoint in Speed Mode              │
 │             │                   │ In Torque Mode (fw 2048+): overrides        │
 │             │                   │   Max Speed EEPROM limit when non-zero      │
-│             │                   │ Positive = direction command direction;      │
+│             │                   │ Positive = direction command direction;     │
 │             │                   │   Negative = opposite of direction command  │
 │                                                                               │
-│  Byte 4     │ Direction Command │ 0 = Reverse, 1 = Forward                   │
-│             │                   │ Changing direction while enabled auto-       │
+│  Byte 4     │ Direction Command │ 0 = Reverse, 1 = Forward                    │
+│             │                   │ Changing direction while enabled auto-      │
 │             │                   │ disables inverter (safety lockout)          │
 │                                                                               │
 │  Byte 5     │ Control Bits      │ Bit 0: Inverter Enable  (0=Off, 1=On)       │
-│             │                   │ Bit 1: Inverter Discharge (0=Disable,        │
-│             │                   │          1=Enable active discharge)          │
-│             │                   │ Bit 2: Speed Mode Enable (0=no override,     │
-│             │                   │          1=force Torque→Speed mode change)   │
-│             │                   │         (does NOT change Speed→Torque)       │
+│             │                   │ Bit 1: Inverter Discharge (0=Disable,       │
+│             │                   │          1=Enable active discharge)         │
+│             │                   │ Bit 2: Speed Mode Enable (0=no override,    │
+│             │                   │          1=force Torque→Speed mode change)  │
+│             │                   │         (does NOT change Speed→Torque)      │
 │             │                   │ Bits 4–7: Rolling Counter (Gen 5/CM only,   │
 │             │                   │           U4 value 0–15, must increment)    │
 │                                                                               │
 │  Bytes 6–7  │ Torque Limit      │ Signed 16-bit, N·m × 10                     │
 │             │                   │ 0 = use EEPROM motor/regen limits (default) │
 │             │                   │ Positive value = override both Motor and    │
-│             │                   │   Regen Torque limits to this value          │
-│             │                   │ Added in firmware version 1953;              │
-│             │                   │   set to 0x0000 on older firmware            │
-└──────────────────────────────────────────────────────────────────────────────┘
+│             │                   │   Regen Torque limits to this value         │
+│             │                   │ Added in firmware version 1953;             │
+│             │                   │   set to 0x0000 on older firmware           │
+└───────────────────────────────────────────────────────────────────────────────┘
 ```
 
 **Inverter Enable Lockout Safety Feature:**
@@ -1296,25 +1296,25 @@ the correct IDs are 0x0C1 for the request and 0x0C2 for the response).
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │         0x0C1 — READ / WRITE PARAMETER COMMAND  (Vehicle → PM100)            │
-│                                                                               │
+│                                                                              │
 │  Bytes 0–1 │ Parameter Address │ Unsigned 16-bit, little-endian              │
-│            │                   │ 0–99   = General / command parameters        │
-│            │                   │ 100–499 = EEPROM (non-volatile) parameters   │
-│                                                                               │
-│  Byte 2    │ R/W Command       │ 0 = Read, 1 = Write                          │
-│                                                                               │
-│  Byte 3    │ Reserved          │ Send as 0x00                                 │
-│                                                                               │
-│  Bytes 4–5 │ Data (Lo)         │ Data value, format per parameter definition  │
-│            │                   │ If < 4 bytes: fill from byte 4 upward        │
-│                                                                               │
-│  Bytes 6–7 │ Reserved          │ Send as 0x00 0x00                            │
+│            │                   │ 0–99   = General / command parameters       │
+│            │                   │ 100–499 = EEPROM (non-volatile) parameters  │
+│                                                                              │
+│  Byte 2    │ R/W Command       │ 0 = Read, 1 = Write                         │
+│                                                                              │
+│  Byte 3    │ Reserved          │ Send as 0x00                                │
+│                                                                              │
+│  Bytes 4–5 │ Data (Lo)         │ Data value, format per parameter definition │
+│            │                   │ If < 4 bytes: fill from byte 4 upward       │
+│                                                                              │
+│  Bytes 6–7 │ Reserved          │ Send as 0x00 0x00                           │
 └──────────────────────────────────────────────────────────────────────────────┘
 
-┌──────────────────────────────────────────────────────────────────────────────┐
-│         0x0C2 — READ / WRITE PARAMETER RESPONSE  (PM100 → Vehicle)           │
+┌───────────────────────────────────────────────────────────────────────────────┐
+│         0x0C2 — READ / WRITE PARAMETER RESPONSE  (PM100 → Vehicle)            │
 │                                                                               │
-│  Bytes 0–1 │ Parameter Address │ Echoes the address from 0x0C1               │
+│  Bytes 0–1 │ Parameter Address │ Echoes the address from 0x0C1                │
 │            │                   │ Returns 0x00 0x00 if address not recognized  │
 │                                                                               │
 │  Byte 2    │ Write Success     │ 0 = not written / read response, 1 = success │
@@ -1324,7 +1324,7 @@ the correct IDs are 0x0C1 for the request and 0x0C2 for the response).
 │  Bytes 4–5 │ Data (Lo)         │ Read data (on read), or echo (on write)      │
 │                                                                               │
 │  Bytes 6–7 │ Reserved          │                                              │
-└──────────────────────────────────────────────────────────────────────────────┘
+└───────────────────────────────────────────────────────────────────────────────┘
 ```
 
 **Example — read parameter address 148 (CAN Active Messages Lo Word):**
