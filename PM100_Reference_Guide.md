@@ -805,6 +805,8 @@ A CAN 2.0A (standard frame) message has the following layout. Understanding this
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
+> **Dominant / recessive:** CAN uses two bus states rather than high/low logic. See [Appendix A.1](#a1-dominant-and-recessive-bits) for an explanation.
+
 **For all PM100 messages:**
 
 | Field | Value | Notes |
@@ -1857,3 +1859,22 @@ Several CAN message formats changed across firmware releases. If RMS GUI shows a
 | Gen 5 / CM only | Rolling counter (§7.10) and bits 4–7 of 0x0C0 byte 5 not present on PM Gen 2 (PM100) |
 
 **To identify the firmware version on BlueBoy's unit:** connect RMS GUI and read the firmware version displayed on the main screen, or read CAN message 0x0AE bytes 4–7 (software version + build date).
+
+---
+
+## Appendix A — CAN Bus Concepts
+
+### A.1 Dominant and Recessive Bits
+
+Every bit transmitted on a CAN bus is either **dominant** or **recessive** — these are the two logic states of the differential pair.
+
+| State | Logic | Voltage (typical) | Behaviour |
+|---|---|---|---|
+| Dominant | 0 | CAN_H ~3.5 V, CAN_L ~1.5 V (~2 V differential) | Wins if two nodes transmit simultaneously |
+| Recessive | 1 | CAN_H and CAN_L both ~2.5 V (~0 V differential) | Loses to a dominant bit |
+
+The key property is that **dominant overrides recessive** on the wire. If one node transmits dominant (0) and another simultaneously transmits recessive (1), the bus reads dominant. This is how CAN handles arbitration — the node with the lower message ID (more leading zeros in its 11-bit identifier) wins the bus without a collision or retransmission.
+
+**Recessive bits in the EOF field** mean the transmitting node releases the bus — it stops driving the differential voltage and allows the line to float back to its idle state (~0 V differential). The 7 recessive EOF bits signal to all other nodes that the frame is complete and the bus is free.
+
+In practice this is handled entirely by the CAN controller hardware. It is only relevant when debugging at the electrical level with an oscilloscope.
